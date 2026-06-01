@@ -1,0 +1,7 @@
+# Abaikan folder sementara
+upload/
+output/
+
+# Abaikan file FFmpeg
+*.exe
+*.dll

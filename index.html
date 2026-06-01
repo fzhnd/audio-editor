@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Tools - Audio Editor</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/wavesurfer.js@7"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
+    
+    <style>
+        .waveform-container { flex-grow: 1; cursor: pointer; }
+        .bg-theme-bg { background-color: #fcf0f4; }
+        .bg-theme-card { background-color: #fce4ec; }
+        .text-theme-primary { color: #ef2871; }
+        .bg-theme-button { background-color: #d1b3ff; }
+        .bg-theme-button:hover { background-color: #c09af2; }
+        
+        /* Custom Slider Styles */
+        input[type=range].custom-slider { 
+            -webkit-appearance: none; 
+            appearance: none; /* Standarisasi CSS */
+            width: 100%; height: 6px; background: #fbcfe8; border-radius: 4px; outline: none; 
+        }
+        input[type=range].custom-slider::-webkit-slider-thumb, 
+        input[type=range].custom-slider::-moz-range-thumb {
+            -webkit-appearance: none; 
+            appearance: none; /* Standarisasi CSS */
+            width: 16px; height: 16px; border: none; border-radius: 50%;
+            background: #ef2871; cursor: pointer; box-shadow: 0 0 4px rgba(0,0,0,0.2);
+        }
+        
+        /* Tool Button Styles */
+        .tool-btn { position: relative; padding: 0.5rem 1rem; border-radius: 0.375rem; color: #4b5563; transition: all 0.2s; white-space: nowrap; }
+        .tool-btn:hover { background-color: #fce4ec; }
+        .tool-btn.active { color: #4c1d95; font-weight: bold; background-color: #fbcfe8; }
+        .dot-indicator { position: absolute; top: 4px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background-color: #ef2871; display: none; }
+        
+        /* Panel Styles */
+        .tool-panel { display: none; }
+        .tool-panel.active { display: flex; }
+        
+        /* Popup Styles */
+        .fade-popup { 
+            display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); 
+            background: #ffffff; color: #4b5563; padding: 12px; border-radius: 8px; margin-bottom: 8px; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); border: 1px solid #fbcfe8; width: max-content; z-index: 50; 
+        }
+        .fade-popup.active { display: block; }
+        .fade-popup::after {
+            content: ""; position: absolute; top: 100%; left: 50%; margin-left: -6px; border-width: 6px;
+            border-style: solid; border-color: #ffffff transparent transparent transparent;
+        }
+        
+        input[type=range].eq-band { 
+            -webkit-appearance: slider-vertical; 
+            appearance: slider-vertical; /* Standarisasi CSS */
+            width: 8px; height: 100px; 
+        }
+        
+        /* Animasi Transisi Halus Saat Minimize/Maximize Kotak Trek */
+        .track-item { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .waveform-container { transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+</head>
+<body class="bg-theme-bg text-gray-800 min-h-screen flex flex-col font-sans">
+    
+    <header class="bg-white border-b border-pink-200 py-4 px-4 sm:px-8 shadow-sm flex justify-between items-center">
+        <div class="text-xl sm:text-2xl font-extrabold text-theme-primary flex items-center gap-2">Audio Editor</div>
+        <div class="flex gap-4 sm:gap-6 text-sm sm:text-base font-semibold text-gray-600">
+            <a href="index.html" class="text-theme-primary hover:text-pink-700 transition-colors">Tools</a>
+            <a href="splitter.html" class="hover:text-theme-primary transition-colors">Splitter</a>
+        </div>
+    </header>
+
+    <main class="flex-grow flex items-center justify-center p-4 sm:p-6 my-4 sm:my-8">
+        <div class="bg-theme-card rounded-2xl shadow-lg p-5 sm:p-8 w-full max-w-5xl border border-pink-100">
+            
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-theme-primary mb-2">Audio Tools</h2>
+                <p id="tools-description" class="text-pink-500 font-medium px-4 text-sm sm:text-base">Trim or cut, change volume, speed, pitch, equalizer, joiner and converter audio file online</p>
+            </div>
+
+            <div id="upload-section" class="border-2 border-dashed border-pink-300 rounded-xl p-10 text-center hover:border-pink-500 transition-colors relative bg-white shadow-sm flex flex-col items-center justify-center">
+                <input type="file" id="file-input" aria-label="Unggah file audio" accept=".wav,.mp3,.flac,.m4a,.ogg,.aac" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" multiple>
+                <i class="fas fa-cloud-upload-alt text-4xl sm:text-5xl text-purple-300 mb-4"></i>
+                <p class="text-base sm:text-lg font-medium text-gray-600 mb-4">Jatuhkan file Audio di sini atau</p>
+                <button aria-label="Pilih File Audio" class="bg-theme-button text-purple-900 font-bold py-2 px-8 rounded-lg shadow-sm pointer-events-none mb-3">Pilih File Audio</button>
+                <p class="text-xs sm:text-sm text-gray-400">Mendukung: WAV, MP3, FLAC, M4A, OGG, AAC. Max: 50 MB.</p>
+            </div>
+
+            <div id="loader-section" class="hidden text-center py-12 bg-white rounded-xl shadow-sm border border-pink-100">
+                <div class="mb-4 text-lg font-medium text-theme-primary" id="loading-text">Memuat audio...</div>
+                <div class="w-3/4 mx-auto bg-pink-100 rounded-full h-4 relative overflow-hidden">
+                    <div id="progress-bar" class="bg-[#d1b3ff] h-full rounded-full transition-all duration-300 w-0"></div>
+                </div>
+            </div>
+
+            <div id="result-section" class="hidden">
+                
+                <div class="bg-white border border-pink-200 rounded-xl p-3 sm:p-4 mb-4 flex justify-between items-center shadow-sm">
+                    <div class="flex items-center gap-3 sm:gap-4 w-full overflow-hidden">
+                        <button id="btn-play" aria-label="Play atau Pause audio" title="Play" class="focus:outline-none flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-theme-button text-purple-900 rounded-full flex items-center justify-center hover:bg-purple-300 transition shadow-sm">
+                            <i class="fas fa-play ml-1" id="play-icon"></i>
+                        </button>
+                        <div class="flex flex-col justify-center overflow-hidden relative">
+                            <div class="flex items-center gap-1">
+                                <input type="text" id="project-file-name" aria-label="Nama file yang akan diunduh" class="font-bold text-gray-700 text-sm sm:text-lg bg-transparent border-b border-transparent hover:border-pink-300 focus:border-pink-500 focus:outline-none transition-colors px-1 w-32 sm:w-48 truncate" value="nama_file.wav" title="Klik untuk mengubah nama file yang akan diunduh">
+                                <i class="fas fa-pen text-[10px] sm:text-xs text-gray-400"></i>
+                            </div>
+                            <p id="file-duration" class="text-xs sm:text-sm text-gray-500 px-1 mt-0.5">Total Durasi: 00:00.0</p>
+                        </div>
+                    </div>
+                    <span id="status-badge" class="flex-shrink-0 bg-pink-100 text-theme-primary border border-pink-200 text-[10px] sm:text-xs px-3 sm:px-4 py-1.5 rounded-full font-bold shadow-sm">Diproses</span>
+                </div>
+
+                <div class="flex justify-between items-center mb-4 bg-[#fcf0f4] p-2 rounded-lg border border-pink-100 relative">
+                    <div class="flex items-center gap-2 lg:hidden">
+                        <button id="btn-mobile-menu" aria-label="Buka menu fitur" class="flex items-center px-3 py-2 text-theme-primary bg-white rounded-md shadow-sm border border-pink-200 hover:border-pink-300 transition-colors text-sm font-bold whitespace-nowrap">
+                            <i class="fas fa-bars mr-2"></i>Fitur
+                        </button>
+                        <div id="active-tool-display" class="flex items-center px-3 py-2 bg-pink-50 border border-pink-200 rounded-md text-purple-800 text-sm font-bold shadow-sm whitespace-nowrap">
+                            <i class="fas fa-cut mr-2"></i>Trim
+                        </div>
+                    </div>
+                    
+                    <div id="tools-container" class="hidden lg:flex flex-col lg:flex-row gap-1 lg:gap-2 absolute lg:relative top-full left-0 mt-2 lg:mt-0 bg-white lg:bg-transparent shadow-xl lg:shadow-none p-3 lg:p-0 rounded-lg border lg:border-none border-pink-200 z-30">
+                        <button class="tool-btn active text-left lg:text-center" data-target="panel-trim"><i class="fas fa-cut mr-2"></i>Trim<span id="dot-trim" class="dot-indicator"></span></button>
+                        <button class="tool-btn text-left lg:text-center" data-target="panel-volume"><i class="fas fa-volume-up mr-2"></i>Volume<span id="dot-volume" class="dot-indicator"></span></button>
+                        <button class="tool-btn text-left lg:text-center" data-target="panel-speed"><i class="fas fa-tachometer-alt mr-2"></i>Speed<span id="dot-speed" class="dot-indicator"></span></button>
+                        <button class="tool-btn text-left lg:text-center" data-target="panel-pitch"><i class="fas fa-wave-square mr-2"></i>Pitch<span id="dot-pitch" class="dot-indicator"></span></button>
+                        <button class="tool-btn text-left lg:text-center" data-target="panel-equalizer"><i class="fas fa-sliders-h mr-2"></i>Equalizer<span id="dot-equalizer" class="dot-indicator"></span></button>
+                    </div>
+                    
+                    <div class="flex gap-1 sm:gap-2 ml-auto lg:ml-0">
+                        <button id="btn-undo" aria-label="Batalkan aksi (Undo)" class="px-3 py-2 text-gray-300 cursor-not-allowed pointer-events-none transition-colors" title="Undo"><i class="fas fa-undo"></i></button>
+                        <button id="btn-redo" aria-label="Ulangi aksi (Redo)" class="px-3 py-2 text-gray-300 cursor-not-allowed pointer-events-none transition-colors" title="Redo"><i class="fas fa-redo"></i></button>
+                    </div>                  
+                </div>
+
+                <div class="bg-white p-4 sm:p-6 rounded-xl border border-pink-200 shadow-sm mb-4 min-h-[150px]">
+                    <div id="tracks-container" class="space-y-4 w-full pb-2">
+                        </div>
+
+                    <div id="track-loader" class="hidden relative bg-[#fcf0f4] border border-pink-200 rounded-xl px-4 pt-8 pb-4 shadow-sm mb-4 mt-2">
+                        <div class="absolute top-3 left-1/2 transform -translate-x-1/2 bg-white px-4 py-1 border border-pink-200 rounded-full text-[10px] font-bold text-gray-400 shadow-sm z-10 whitespace-nowrap">
+                            Memuat Trek...
+                        </div>
+                        <div class="w-full bg-pink-200 rounded-full h-2.5 relative overflow-hidden mt-2">
+                            <div class="bg-pink-500 h-full rounded-full transition-all duration-300 animate-pulse w-full"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-center mt-4">
+                        <input type="file" id="add-file-input" aria-label="Tambah trek file audio baru" accept=".wav,.mp3,.flac,.m4a,.ogg,.aac" class="hidden" multiple>
+                        <button id="btn-add-file" aria-label="Tambah file audio" class="bg-pink-100 text-pink-600 font-bold py-1.5 px-5 rounded-full flex items-center justify-center gap-2 hover:bg-pink-200 transition-colors shadow-sm text-sm" onclick="document.getElementById('add-file-input').click()">
+                            <i class="fas fa-plus-circle text-base"></i> Add files
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 sm:p-5 rounded-xl border border-pink-200 shadow-sm mb-6 flex justify-center min-h-[100px]">
+                    
+                    <div id="panel-trim" class="tool-panel active w-full flex-col items-center gap-4">
+                        <div class="flex flex-wrap gap-3 sm:gap-4 items-center justify-center bg-[#fcf0f4] p-3 rounded-xl border border-pink-100">
+                            <div class="relative">
+                                <button id="btn-fadein" class="bg-white border border-pink-200 px-3 sm:px-4 py-2 rounded-lg text-gray-600 hover:bg-pink-200 transition shadow-sm text-sm sm:text-base"><i class="fas fa-signal mr-2"></i>Fade In</button>
+                                <div id="popup-fadein" class="fade-popup">
+                                    <p class="text-xs mb-2 text-center font-bold" id="text-fadein">Fade in: 0 sec</p>
+                                    <input type="range" id="slider-fadein" aria-label="Atur durasi fade in" min="0" max="30" step="0.1" value="0" class="w-32 custom-slider mb-1">
+                                </div>
+                            </div>
+                            <div class="relative">
+                                <button id="btn-fadeout" class="bg-white border border-pink-200 px-3 sm:px-4 py-2 rounded-lg text-gray-600 hover:bg-pink-200 transition shadow-sm text-sm sm:text-base"><i class="fas fa-signal fa-flip-horizontal mr-2"></i>Fade Out</button>
+                                <div id="popup-fadeout" class="fade-popup">
+                                    <p class="text-xs mb-2 text-center font-bold" id="text-fadeout">Fade out: 0 sec</p>
+                                    <input type="range" id="slider-fadeout" aria-label="Atur durasi fade out" min="0" max="30" step="0.1" value="0" class="w-32 custom-slider mb-1">
+                                </div>
+                            </div>
+                            <div class="hidden sm:block h-8 w-px bg-pink-200"></div>
+                            <button id="btn-execute-trim" class="bg-theme-button text-purple-900 font-bold px-4 sm:px-5 py-2 rounded-lg shadow-sm hover:bg-purple-300 transition text-sm sm:text-base">Trim / Cut</button>
+                            <div class="hidden sm:block h-8 w-px bg-pink-200"></div>
+                            <div class="flex items-center gap-2 sm:gap-4 bg-white px-3 sm:px-4 py-2 rounded-lg border border-pink-200 shadow-inner">
+                                <div class="flex items-center gap-1 sm:gap-2">
+                                    <span id="trim-start" class="font-mono text-xs sm:text-sm font-bold text-gray-700 w-12 sm:w-16 text-center">00:00.0</span>
+                                    <div class="flex flex-col text-[10px] text-gray-400">
+                                        <button aria-label="Tambah detik awal trim" type="button" class="focus:outline-none hover:text-theme-primary" onclick="window.adjustTrim('start', 0.1)"><i class="fas fa-caret-up"></i></button>
+                                        <button aria-label="Kurangi detik awal trim" type="button" class="focus:outline-none hover:text-theme-primary" onclick="window.adjustTrim('start', -0.1)"><i class="fas fa-caret-down"></i></button>
+                                    </div>
+                                </div>
+                                <span class="text-gray-400">-</span>
+                                <div class="flex items-center gap-1 sm:gap-2">
+                                    <span id="trim-end" class="font-mono text-xs sm:text-sm font-bold text-gray-700 w-12 sm:w-16 text-center">00:00.0</span>
+                                    <div class="flex flex-col text-[10px] text-gray-400">
+                                        <button aria-label="Tambah detik akhir trim" type="button" class="focus:outline-none hover:text-theme-primary" onclick="window.adjustTrim('end', 0.1)"><i class="fas fa-caret-up"></i></button>
+                                        <button aria-label="Kurangi detik akhir trim" type="button" class="focus:outline-none hover:text-theme-primary" onclick="window.adjustTrim('end', -0.1)"><i class="fas fa-caret-down"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="panel-volume" class="tool-panel w-full flex-col items-center gap-2 justify-center">
+                        <div class="flex items-center gap-4 w-full max-w-lg px-4">
+                            <i class="fas fa-volume-down text-gray-400"></i>
+                            <input type="range" id="slider-volume" aria-label="Pengaturan persentase volume" min="-100" max="200" value="0" class="custom-slider">
+                            <i class="fas fa-volume-up text-gray-600"></i>
+                        </div>
+                        <span id="text-volume" class="text-sm font-bold text-theme-primary mt-1">0%</span>
+                    </div>
+
+                    <div id="panel-speed" class="tool-panel w-full flex-col items-center gap-2 justify-center">
+                        <div class="flex items-center gap-4 w-full max-w-lg px-4">
+                            <i class="fas fa-walking text-gray-400"></i>
+                            <input type="range" id="slider-speed" aria-label="Pengaturan kecepatan lagu" min="0.5" max="4" step="0.1" value="1" class="custom-slider">
+                            <i class="fas fa-running text-gray-600"></i>
+                        </div>
+                        <span id="text-speed" class="text-sm font-bold text-theme-primary mt-1">1.0x</span>
+                    </div>
+
+                    <div id="panel-pitch" class="tool-panel w-full flex-col items-center gap-2 justify-center">
+                        <div class="flex items-center gap-4 w-full max-w-lg px-4">
+                            <span class="text-[10px] sm:text-xs font-bold text-gray-400">-12</span>
+                            <input type="range" id="slider-pitch" aria-label="Pengaturan semitone pitch" min="-12" max="12" step="0.1" value="0" class="custom-slider">
+                            <span class="text-[10px] sm:text-xs font-bold text-gray-600">+12</span>
+                        </div>
+                        <span id="text-pitch" class="text-sm font-bold text-theme-primary mt-1">0 semitones</span>
+                    </div>
+
+                    <div id="panel-equalizer" class="tool-panel w-full flex-col items-center gap-4 max-w-xl mx-auto">
+                        <div class="flex justify-center w-full px-4 mb-2 text-sm font-bold text-gray-600 border-b border-pink-100 pb-3">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <i class="fas fa-sliders-h text-theme-primary"></i> Preset:
+                                <select id="eq-preset-select" aria-label="Pilih preset equalizer otomatis" class="bg-[#fcf0f4] border border-pink-200 rounded-md p-1.5 outline-none text-theme-primary cursor-pointer hover:border-pink-300">
+                                    <option value="0,0,0,0,0,0,0,0,0,0">Default</option>
+                                    <option value="4,3,2,1,0,-1,-2,-3,-4,-5">Bass</option>
+                                    <option value="-2,-1,0,2,4,4,2,0,-1,-2">Pop</option>
+                                    <option value="5,4,3,1,-1,-1,1,3,4,5">Rock</option>
+                                    <option value="0,0,0,0,0,0,-1,-2,-2,-3">Classic</option>
+                                    <option value="3,2,1,0,0,-1,-2,-3,-3,-3">Dance</option>
+                                    <option value="0,0,1,2,2,2,1,0,0,0">Club</option>
+                                    <option value="5,4,4,3,1,0,-1,-2,-3,-4">Full Bass</option>
+                                    <option value="-4,-3,-2,-1,0,1,2,3,4,5">Full Treble</option>
+                                    <option value="-2,0,1,2,2,2,1,0,-1,-2">Live</option>
+                                    <option value="2,2,0,0,0,0,0,0,2,2">Party</option>
+                                    <option value="0,0,-1,-2,0,2,2,0,-1,-2">Reggae</option>
+                                    <option value="3,2,0,-2,-2,-1,0,2,3,3">Techno</option>
+                                    <option value="custom" hidden>Custom</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="flex justify-between w-full px-2 sm:px-6" id="eq-sliders">
+                            <div class="flex flex-col items-center gap-2"><input type="range" aria-label="EQ Frekuensi 32 Hertz" min="-12" max="12" value="0" class="eq-band bg-pink-200 accent-theme-primary"><span class="text-[9px] sm:text-[10px] text-gray-500 font-mono">32</span></div>
+                            <div class="flex flex-col items-center gap-2"><input type="range" aria-label="EQ Frekuensi 64 Hertz" min="-12" max="12" value="0" class="eq-band bg-pink-200 accent-theme-primary"><span class="text-[9px] sm:text-[10px] text-gray-500 font-mono">64</span></div>
+                            <div class="flex flex-col items-center gap-2 hidden sm:flex"><input type="range" aria-label="EQ Frekuensi 125 Hertz" min="-12" max="12" value="0" class="eq-band bg-pink-200 accent-theme-primary"><span class="text-[10px] text-gray-500 font-mono">125</span></div>
+                            <div class="flex flex-col items-center gap-2"><input type="range" aria-label="EQ Frekuensi 250 Hertz" min="-12" max="12" value="0" class="eq-band bg-pink-200 accent-theme-primary"><span class="text-[9px] sm:text-[10px] text-gray-500 font-mono">250</span></div>
+                            <div class="flex flex-col items-center gap-2 hidden sm:flex"><input type="range" aria-label="EQ Frekuensi 500 Hertz" min="-12" max="12" value="0" class="eq-band bg-pink-200 accent-theme-primary"><span class="text-[10px] text-gray-500 font-mono">500</span></div>
+                            <div class="flex flex-col items-center gap-2"><input type="range" aria-label="EQ Frekuensi 1000 Hertz" min="-12" max="12" value="0" class="eq-band bg-pink-200 accent-theme-primary"><span class="text-[9px] sm:text-[10px] text-gray-500 font-mono">1K</span></div>
+                            <div class="flex flex-col items-center gap-2 hidden sm:flex"><input type="range" aria-label="EQ Frekuensi 2000 Hertz" min="-12" max="12" value="0" class="eq-band bg-pink-200 accent-theme-primary"><span class="text-[10px] text-gray-500 font-mono">2K</span></div>
+                            <div class="flex flex-col items-center gap-2"><input type="range" aria-label="EQ Frekuensi 4000 Hertz" min="-12" max="12" value="0" class="eq-band bg-pink-200 accent-theme-primary"><span class="text-[9px] sm:text-[10px] text-gray-500 font-mono">4K</span></div>
+                            <div class="flex flex-col items-center gap-2 hidden sm:flex"><input type="range" aria-label="EQ Frekuensi 8000 Hertz" min="-12" max="12" value="0" class="eq-band bg-pink-200 accent-theme-primary"><span class="text-[10px] text-gray-500 font-mono">8K</span></div>
+                            <div class="flex flex-col items-center gap-2"><input type="range" aria-label="EQ Frekuensi 16000 Hertz" min="-12" max="12" value="0" class="eq-band bg-pink-200 accent-theme-primary"><span class="text-[9px] sm:text-[10px] text-gray-500 font-mono">16K</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex flex-row gap-3 sm:gap-4 justify-end items-center bg-white py-3 px-4 sm:py-4 sm:px-6 rounded-xl border border-pink-200 shadow-sm">
+                    <select id="download-format" aria-label="Pilih format file yang akan diunduh" class="bg-[#fcf0f4] text-gray-700 py-2 px-3 sm:py-2.5 sm:px-4 rounded-lg border border-pink-200 focus:outline-none focus:border-pink-300 font-medium cursor-pointer text-sm sm:text-base leading-tight h-full">
+                        <option value=".wav">.wav</option>
+                        <option value=".mp3">.mp3</option>
+                        <option value=".flac">.flac</option>
+                        <option value=".m4a">.m4a</option>
+                        <option value=".ogg">.ogg</option>
+                        <option value=".aac">.aac</option>
+                    </select>
+                    <button id="btn-download" aria-label="Download file audio hasil edit" class="flex items-center justify-center bg-theme-button hover:bg-purple-300 text-purple-900 border border-purple-300 font-bold py-2 sm:py-2.5 px-6 sm:px-8 rounded-lg transition-colors shadow-sm text-sm sm:text-base leading-tight whitespace-nowrap h-full">
+                        <i class="fas fa-download mr-2"></i>Download
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white py-5 text-center text-sm font-medium text-gray-400 mt-auto border-t border-pink-100 shadow-inner">
+        &copy; 2026 Audio Editor
+    </footer>
+
+    <script src="tools.js"></script>
+</body>
+</html>

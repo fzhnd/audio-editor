@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Splitter - Audio Editor</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/wavesurfer.js@7"></script>
+    
+    <style>
+        .waveform-container { flex-grow: 1; cursor: pointer; }
+        .bg-theme-bg { background-color: #fcf0f4; }
+        .bg-theme-card { background-color: #fce4ec; }
+        .text-theme-primary { color: #ef2871; }
+        .bg-theme-button { background-color: #d1b3ff; }
+        .bg-theme-button:hover { background-color: #c09af2; }
+        
+        .time-display { font-variant-numeric: tabular-nums; }
+        .stem-row { transition: opacity 0.3s ease; }
+    </style>
+</head>
+<body class="bg-theme-bg text-gray-800 min-h-screen flex flex-col font-sans">
+    
+    <header class="bg-white border-b border-pink-200 py-4 px-4 sm:px-8 shadow-sm flex justify-between items-center">
+        <div class="text-xl sm:text-2xl font-extrabold text-theme-primary flex items-center gap-2">Audio Editor</div>
+        <div class="flex gap-4 sm:gap-6 text-sm sm:text-base font-semibold text-gray-600">
+            <a href="index.html" class="hover:text-theme-primary transition-colors">Tools</a>
+            <a href="splitter.html" class="text-theme-primary hover:text-pink-700 transition-colors">Splitter</a>
+        </div>
+    </header>
+
+    <main class="flex-grow flex items-center justify-center p-4 sm:p-6 my-4 sm:my-8">
+        <div class="bg-theme-card rounded-2xl shadow-lg p-5 sm:p-8 w-full max-w-5xl border border-pink-100">
+            
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-theme-primary mb-2">Audio Splitter</h2>
+                <p id="tools-description" class="text-pink-500 font-medium px-4 text-sm sm:text-base">Separate vocals, bass, drums, guitar, piano, instruments, and converter audio file</p>
+            </div>
+
+            <div id="upload-section" class="border-2 border-dashed border-pink-300 rounded-xl p-10 text-center hover:border-pink-500 transition-colors relative bg-white shadow-sm flex flex-col items-center justify-center">
+                <input type="file" id="file-input" aria-label="Unggah file audio" accept=".wav,.mp3,.flac,.m4a,.ogg,.aac" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                <i class="fas fa-cloud-upload-alt text-4xl sm:text-5xl text-purple-300 mb-4"></i>
+                <p class="text-base sm:text-lg font-medium text-gray-600 mb-4">Jatuhkan file Audio di sini atau</p>
+                <button class="bg-theme-button text-purple-900 font-bold py-2 px-8 rounded-lg shadow-sm pointer-events-none mb-3">Pilih File Audio</button>
+                <p class="text-xs sm:text-sm text-gray-400">Mendukung: WAV, MP3, FLAC, M4A, OGG, AAC. Max: 50 MB.</p>
+            </div>
+
+            <div id="loader-section" class="hidden text-center py-12 bg-white rounded-xl shadow-sm border border-pink-100">
+                <div class="mb-4 text-lg font-medium text-theme-primary" id="loading-text">Memproses audio dengan AI...</div>
+                <div class="w-3/4 mx-auto bg-pink-100 rounded-full h-4 relative overflow-hidden">
+                    <div id="progress-bar" class="bg-[#d1b3ff] h-full rounded-full transition-all duration-300 w-0"></div>
+                </div>
+            </div>
+
+            <div id="result-section" class="hidden">
+                
+                <div class="bg-white border border-pink-200 rounded-xl p-4 mb-6 flex justify-between items-center shadow-sm">
+                    <div class="flex items-center gap-4 overflow-hidden">
+                        <button id="btn-master-play" aria-label="Mainkan atau jeda semua trek" class="focus:outline-none flex-shrink-0 w-12 h-12 bg-theme-button text-purple-900 rounded-full flex items-center justify-center hover:bg-purple-300 transition shadow-sm">
+                            <i class="fas fa-play ml-1" id="master-play-icon"></i>
+                        </button>
+                        <div class="overflow-hidden">
+                            <p id="file-name" class="font-bold text-gray-700 text-sm sm:text-lg truncate">lagu.wav</p>
+                            <p id="file-duration" class="text-xs sm:text-sm text-gray-500">Durasi: 00:00</p>
+                        </div>
+                    </div>
+                    <span id="status-badge" class="flex-shrink-0 bg-pink-100 text-theme-primary border border-pink-200 text-xs px-4 py-1.5 rounded-full font-bold shadow-sm">Terpisah</span>
+                </div>
+
+                <div class="space-y-4 bg-white p-4 sm:p-6 rounded-xl border border-pink-200 shadow-sm">
+                    
+                    <div class="flex items-center gap-4 bg-[#fcf0f4] p-3 rounded-lg stem-row border border-pink-100" id="row-vokal">
+                        <div class="w-24 sm:w-32 font-bold text-gray-700 flex items-center justify-between text-sm sm:text-base">
+                            <span>Vokal</span>
+                            <button type="button" aria-label="Mute atau Unmute Vokal" class="toggle-btn text-purple-400 hover:text-purple-600 transition-colors focus:outline-none" data-track="vokal">
+                                <i class="fas fa-volume-up text-lg"></i>
+                            </button>
+                        </div>
+                        <div class="waveform-container" id="wf-vokal"></div>
+                        <div class="w-20 sm:w-28 text-right text-[10px] sm:text-xs text-gray-500 font-mono time-display font-medium" id="time-vokal">00:00 / 00:00</div>
+                    </div>
+
+                    <div class="flex items-center gap-4 bg-[#fcf0f4] p-3 rounded-lg stem-row border border-pink-100" id="row-bass">
+                        <div class="w-24 sm:w-32 font-bold text-gray-700 flex items-center justify-between text-sm sm:text-base">
+                            <span>Bass</span>
+                            <button type="button" aria-label="Mute atau Unmute Bass" class="toggle-btn text-purple-400 hover:text-purple-600 transition-colors focus:outline-none" data-track="bass">
+                                <i class="fas fa-volume-up text-lg"></i>
+                            </button>
+                        </div>
+                        <div class="waveform-container" id="wf-bass"></div>
+                        <div class="w-20 sm:w-28 text-right text-[10px] sm:text-xs text-gray-500 font-mono time-display font-medium" id="time-bass">00:00 / 00:00</div>
+                    </div>
+
+                    <div class="flex items-center gap-4 bg-[#fcf0f4] p-3 rounded-lg stem-row border border-pink-100" id="row-drum">
+                        <div class="w-24 sm:w-32 font-bold text-gray-700 flex items-center justify-between text-sm sm:text-base">
+                            <span>Drum</span>
+                            <button type="button" aria-label="Mute atau Unmute Drum" class="toggle-btn text-purple-400 hover:text-purple-600 transition-colors focus:outline-none" data-track="drum">
+                                <i class="fas fa-volume-up text-lg"></i>
+                            </button>
+                        </div>
+                        <div class="waveform-container" id="wf-drum"></div>
+                        <div class="w-20 sm:w-28 text-right text-[10px] sm:text-xs text-gray-500 font-mono time-display font-medium" id="time-drum">00:00 / 00:00</div>
+                    </div>
+
+                    <div class="flex items-center gap-4 bg-[#fcf0f4] p-3 rounded-lg stem-row border border-pink-100" id="row-gitar">
+                        <div class="w-24 sm:w-32 font-bold text-gray-700 flex items-center justify-between text-sm sm:text-base">
+                            <span>Gitar</span>
+                            <button type="button" aria-label="Mute atau Unmute Gitar" class="toggle-btn text-purple-400 hover:text-purple-600 transition-colors focus:outline-none" data-track="gitar">
+                                <i class="fas fa-volume-up text-lg"></i>
+                            </button>
+                        </div>
+                        <div class="waveform-container" id="wf-gitar"></div>
+                        <div class="w-20 sm:w-28 text-right text-[10px] sm:text-xs text-gray-500 font-mono time-display font-medium" id="time-gitar">00:00 / 00:00</div>
+                    </div>
+
+                    <div class="flex items-center gap-4 bg-[#fcf0f4] p-3 rounded-lg stem-row border border-pink-100" id="row-piano">
+                        <div class="w-24 sm:w-32 font-bold text-gray-700 flex items-center justify-between text-sm sm:text-base">
+                            <span>Piano</span>
+                            <button type="button" aria-label="Mute atau Unmute Piano" class="toggle-btn text-purple-400 hover:text-purple-600 transition-colors focus:outline-none" data-track="piano">
+                                <i class="fas fa-volume-up text-lg"></i>
+                            </button>
+                        </div>
+                        <div class="waveform-container" id="wf-piano"></div>
+                        <div class="w-20 sm:w-28 text-right text-[10px] sm:text-xs text-gray-500 font-mono time-display font-medium" id="time-piano">00:00 / 00:00</div>
+                    </div>
+
+                    <div class="flex items-center gap-4 bg-[#fcf0f4] p-3 rounded-lg stem-row border border-pink-100" id="row-instrumen">
+                        <div class="w-24 sm:w-32 font-bold text-gray-700 flex items-center justify-between text-sm sm:text-base">
+                            <span>Instrumen</span>
+                            <button type="button" aria-label="Mute atau Unmute Instrumen" class="toggle-btn text-purple-400 hover:text-purple-600 transition-colors focus:outline-none" data-track="instrumen">
+                                <i class="fas fa-volume-up text-lg"></i>
+                            </button>
+                        </div>
+                        <div class="waveform-container" id="wf-instrumen"></div>
+                        <div class="w-20 sm:w-28 text-right text-[10px] sm:text-xs text-gray-500 font-mono time-display font-medium" id="time-instrumen">00:00 / 00:00</div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex flex-col md:flex-row gap-4 justify-end items-center bg-white py-4 px-6 rounded-xl border border-pink-200 shadow-sm">
+                    <div class="flex gap-4 w-full md:w-auto">
+                        <select id="download-stem" aria-label="Pilih instrumen yang akan diunduh" class="w-1/2 md:w-auto bg-[#fcf0f4] text-gray-700 py-2.5 px-4 rounded-lg border border-pink-200 focus:outline-none focus:border-pink-300 font-medium cursor-pointer leading-tight h-full">
+                            <option value="vokal">Vokal</option>
+                            <option value="bass">Bass</option>
+                            <option value="drum">Drum</option>
+                            <option value="gitar">Gitar</option>
+                            <option value="piano">Piano</option>
+                            <option value="instrumen">Instrumen</option>
+                        </select>
+                        <select id="download-format" aria-label="Pilih format file yang akan diunduh" class="w-1/2 md:w-auto bg-[#fcf0f4] text-gray-700 py-2.5 px-4 rounded-lg border border-pink-200 focus:outline-none focus:border-pink-300 font-medium cursor-pointer leading-tight h-full">
+                            <option value=".wav">.wav</option>
+                            <option value=".mp3">.mp3</option>
+                            <option value=".flac">.flac</option>
+                            <option value=".m4a">.m4a</option>
+                            <option value=".ogg">.ogg</option>
+                            <option value=".aac">.aac</option>    
+                        </select>
+                    </div>
+                    <button id="btn-download" aria-label="Download file audio hasil edit" class="flex items-center justify-center bg-theme-button hover:bg-purple-300 text-purple-900 border border-purple-300 font-bold py-2.5 px-8 rounded-lg transition-colors shadow-sm w-full md:w-auto leading-tight h-full focus:outline-none">
+                        <i class="fas fa-download mr-2"></i>Download
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white py-5 text-center text-sm font-medium text-gray-400 mt-auto border-t border-pink-100 shadow-inner">
+        &copy; 2026 Audio Editor
+    </footer>
+    
+    <script src="splitter.js"></script>
+</body>
+</html>
