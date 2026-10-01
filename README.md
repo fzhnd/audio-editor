@@ -91,8 +91,6 @@ audio-editor
  ┣ tools.js          # Audio Tools Logic (with Auto-Format detection)
  ┣ splitter.html     # Audio Splitter UI
  ┣ splitter.js       # Audio Splitter Logic
- ┣ upload            # Temp directory for uploaded files (Auto-cleared)
- ┣ output            # Temp directory for FFmpeg outputs (Auto-cleared)
  ┣ app.py            # Main Flask app, AI Queue, and Supabase Auto-Cleanup
  ┣ requirements.txt  # Python dependencies (Flask, Demucs, Supabase, etc.)
  ┗ README.md         # Documentation
