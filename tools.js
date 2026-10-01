@@ -979,13 +979,28 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     });
 
+    // Fungsi untuk mengatur format dropdown otomatis
+    function setFormatOtomatis(file) {
+        if (!file) return;
+        const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+        const formatDropdown = document.getElementById('download-format'); 
+        
+        if (formatDropdown) {
+            if (Array.from(formatDropdown.options).some(opt => opt.value === fileExtension)) {
+                formatDropdown.value = fileExtension;
+            }
+        }
+    }
+
     // Tombol Pilih File Upload Awal
     document.getElementById('file-input').addEventListener('change', (e) => { 
         if (e.target.files.length) {
+            setFormatOtomatis(e.target.files[0]);
             handleFileUpload(e.target.files, false);
         }
     });
-    
+
+    // Area Drag & Drop
     const uploadSection = document.getElementById('upload-section');
     if(uploadSection) {
         uploadSection.addEventListener('dragover', (e) => { 
@@ -999,6 +1014,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault(); 
             uploadSection.classList.remove('border-pink-500');
             if (e.dataTransfer.files.length > 0) {
+                setFormatOtomatis(e.dataTransfer.files[0]);
                 handleFileUpload(e.dataTransfer.files, false);
             }
         });

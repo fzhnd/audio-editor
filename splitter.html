@@ -61,9 +61,12 @@
                         <button id="btn-master-play" aria-label="Mainkan atau jeda semua trek" class="focus:outline-none flex-shrink-0 w-12 h-12 bg-theme-button text-purple-900 rounded-full flex items-center justify-center hover:bg-purple-300 transition shadow-sm">
                             <i class="fas fa-play ml-1" id="master-play-icon"></i>
                         </button>
-                        <div class="overflow-hidden">
-                            <p id="file-name" class="font-bold text-gray-700 text-sm sm:text-lg truncate">lagu.wav</p>
-                            <p id="file-duration" class="text-xs sm:text-sm text-gray-500">Durasi: 00:00</p>
+                        <div class="flex flex-col justify-center overflow-hidden relative">
+                            <div class="flex items-center gap-1">
+                                <input type="text" id="file-name" aria-label="Nama file" class="font-bold text-gray-700 text-sm sm:text-lg bg-transparent border-b border-transparent hover:border-pink-300 focus:border-pink-500 focus:outline-none transition-colors px-1 w-32 sm:w-48 truncate" value="lagu.wav" title="Klik untuk mengubah nama file">
+                                <i class="fas fa-pen text-[10px] sm:text-xs text-gray-400"></i>
+                            </div>
+                            <p id="file-duration" class="text-xs sm:text-sm text-gray-500 px-1 mt-0.5">Durasi: 00:00</p>
                         </div>
                     </div>
                     <span id="status-badge" class="flex-shrink-0 bg-pink-100 text-theme-primary border border-pink-200 text-xs px-4 py-1.5 rounded-full font-bold shadow-sm">Terpisah</span>

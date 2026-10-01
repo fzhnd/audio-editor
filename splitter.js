@@ -162,7 +162,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     setTimeout(() => {
                         document.getElementById('loader-section').classList.add('hidden');
                         document.getElementById('result-section').classList.remove('hidden');
-                        document.getElementById('file-name').innerText = file.name;
+                        document.getElementById('file-name').value = file.name;
+                        
+                        // Mengatur otomatis dropdown format sesuai ekstensi file asli
+                        const fileExtension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                        const formatDropdown = document.getElementById('download-format');
+                        if (Array.from(formatDropdown.options).some(opt => opt.value === fileExtension)) {
+                            formatDropdown.value = fileExtension;
+                        }
                         
                         const badge = document.getElementById('status-badge');
                         if (badge) {
@@ -209,16 +216,44 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.files.length) processFile(e.target.files[0]);
     });
 
-    // Fitur Download dan Mengubah Status
-    document.getElementById('btn-download').addEventListener('click', () => {
+    // Fitur Download dan Mengubah Status dengan Custom Name
+    document.getElementById('btn-download').addEventListener('click', async () => {
         const stem = document.getElementById('download-stem').value.toLowerCase();
         const fmt = document.getElementById('download-format').value.replace('.', '');
-        window.location.href = `/api/download/${currentFolderName}/${stem}?format=${fmt}`;
 
+        let customName = document.getElementById('file-name').value;
+        customName = customName.replace(/\.[^/.]+$/, ""); 
+        const finalFileName = `${customName}_${stem}.${fmt}`;
+
+        const url = `/api/download/${currentFolderName}/${stem}?format=${fmt}`;
         const badge = document.getElementById('status-badge');
-        if (badge) {
-            badge.innerText = "Selesai";
-            badge.className = "flex-shrink-0 bg-purple-100 text-purple-700 border border-purple-200 text-xs px-4 py-1.5 rounded-full font-bold shadow-sm";
+        
+        if (badge) badge.innerText = "Mengunduh...";
+
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("File tidak ditemukan");
+            
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = downloadUrl;
+            a.download = finalFileName; 
+            document.body.appendChild(a);
+            a.click();
+            
+            window.URL.revokeObjectURL(downloadUrl);
+            document.body.removeChild(a);
+
+            if (badge) {
+                badge.innerText = "Selesai";
+                badge.className = "flex-shrink-0 bg-purple-100 text-purple-700 border border-purple-200 text-xs px-4 py-1.5 rounded-full font-bold shadow-sm";
+            }
+        } catch (error) {
+            console.error("Download error:", error);
+            window.location.href = url;
         }
     });
 });
